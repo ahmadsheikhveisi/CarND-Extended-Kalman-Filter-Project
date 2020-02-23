@@ -1,14 +1,20 @@
 #include "kalman_filter.h"
+#include <iostream>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+
+#define EPSILON 0.0001
 /* 
  * Please note that the Eigen library does not initialize 
  *   VectorXd or MatrixXd objects with zeros upon creation.
  */
 
-KalmanFilter::KalmanFilter() {}
+KalmanFilter::KalmanFilter()
+{
+	last_rhodot = EPSILON;
+}
 
 KalmanFilter::~KalmanFilter() {}
 
@@ -47,12 +53,44 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   /**
    * TODO: update the state by using Extended Kalman Filter equations
    */
-	VectorXd y = z - H_*x_;
+	VectorXd y = VectorXd(3);
+	float px = x_[0];
+	float py = x_[1];
+	float vx = x_[2];
+	float vy = x_[3];
+	float px2py2_sqrt = sqrt((px*px)+(py*py));
+
+	y[0] = z[0] - px2py2_sqrt;
+	y[1] = z[1] - atan2(py,px);
+
+	// check division by zero
+	if (fabs(px2py2_sqrt) < EPSILON)
+	{
+		std::cout << "UpdateEKF () - Error - Division by Zero" <<
+				"returning the last valid value" << std::endl;
+		y[2] = last_rhodot;
+	}
+	else
+	{
+		y[2] = z[2] - ((px*vx)+(py*vy))/px2py2_sqrt;
+		last_rhodot = y[2];
+	}
+
+	//normalize phi
+	while (y[1] > M_PI)
+	{
+		y[1] -= 2 * M_PI;
+	}
+	while  (y[1] < -M_PI)
+	{
+		y[1] += 2 * M_PI;
+	}
+
 
 	MeasurementUpdate(y);
 }
 
-void KalmanFilter::MeasurementUpdate(const Eigen::VectorXd &err)
+void KalmanFilter::MeasurementUpdate(const VectorXd &err)
 {
 	MatrixXd Ht = H_.transpose();
 	MatrixXd S = H_ * P_ * Ht + R_;

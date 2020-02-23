@@ -65,7 +65,17 @@ class KalmanFilter {
   Eigen::MatrixXd R_;
 
  private:
+
+  /**
+   * Updates the measurement based on error between
+   *  the prediction and new measurement.
+   *  this is the common part of update.
+   * @param err measurment error
+   */
   void MeasurementUpdate(const Eigen::VectorXd &err);
+
+  //last valid rho dot
+  float last_rhodot;
 };
 
 #endif // KALMAN_FILTER_H_
